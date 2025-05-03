@@ -17,23 +17,34 @@ public class NutritionBonus : EntityBehavior
         public float grain;
         public float dairy;
         public float vegetable;
+
+        public float Calculate(float pprotein, float pfruit, float pgrain, float pdairy, float pvegetable)
+        {
+            var effect = pprotein * protein;
+            effect += pfruit * fruit;
+            effect += pgrain * grain;
+            effect += pdairy * dairy;
+            effect += pvegetable * vegetable;
+            return effect;
+        }
     }
 
     public struct NutritionAttrs
     {
         public Nutrients staminaAmountFrom;
         public Nutrients staminaRecoveryRateFrom;
+        public Nutrients exertionStaminaCostFrom;
+        public Nutrients healthBonusFrom;
+        public float healthBonusAmount;
     }
 
-    public override string PropertyName()
-    {
-        return ValkyrNutritionsModSystem.Registry.Get(this.GetType().Name);
-    }
-    internal EntityBehaviorHunger hungerBehavior;
+
+    internal ITreeAttribute hungerTree;
     internal StaminaSystem staminaBehavior;
     internal long ticker;
     internal NutritionAttrs attrs;
 
+    public override string PropertyName() => ValkyrNutritionsModSystem.Registry.Get(this.GetType().Name);
     public NutritionBonus(Entity entity) : base(entity)
     {
     }
@@ -45,7 +56,7 @@ public class NutritionBonus : EntityBehavior
 
     public override void AfterInitialized(bool onFirstSpawn)
     {
-        hungerBehavior = entity.GetBehavior<EntityBehaviorHunger>();
+        hungerTree = entity.WatchedAttributes.GetTreeAttribute("hunger");
 
         ticker = entity.World.RegisterGameTickListener(new Action<float>(SlowTick), 5000, 0);
     }
@@ -56,40 +67,36 @@ public class NutritionBonus : EntityBehavior
         entity.World.UnregisterGameTickListener(ticker);
     }
 
+    public override void OnEntityReceiveDamage(DamageSource damageSource, ref float damage)
+    {
+        base.OnEntityReceiveDamage(damageSource, ref damage);
+    }
+
     public void SlowTick(float deltaTime)
     {
-        if (hungerBehavior == null) return;
+        if (hungerTree == null) return;
 
-        var maxSat = hungerBehavior.MaxSaturation;
-        
-        var pprotein = hungerBehavior.ProteinLevel / maxSat;
-        var pfruit = hungerBehavior.FruitLevel / maxSat;
-        var pgrain = hungerBehavior.GrainLevel / maxSat;
-        var pdairy = hungerBehavior.DairyLevel / maxSat;
-        var pvegetable = hungerBehavior.VegetableLevel / maxSat;
+        var maxSat = hungerTree.GetFloat("maxsaturation");
+        var starving = hungerTree.GetFloat("currentsaturation") <= 0f;
 
-        //var eprotein = ((pprotein * 0.8f) + (pdairy * 0.2f));
-        //var ecarbs = ((pgrain * 0.7f) + (pfruit * 0.3f));
-        //var egreens = ((pvegetable * 0.6f) + (pfruit * 0.4f));
+        var pprotein = hungerTree.GetFloat("proteinLevel") / maxSat;
+        var pfruit = hungerTree.GetFloat("fruitLevel") / maxSat;
+        var pgrain = hungerTree.GetFloat("grainLevel") / maxSat;
+        var pdairy = hungerTree.GetFloat("dairyLevel") / maxSat;
+        var pvegetable = hungerTree.GetFloat("vegetableLevel") / maxSat;
 
-        //var overcarb = (ecarbs + 1) - eprotein;
-
-        //var staminaRegenT = (egreens + (ecarbs * overcarb)) / 2f;
-
-        //var staminaAmountT = (egreens + eprotein) / 2f;
-
-        var staminaAmount = pprotein * attrs.staminaAmountFrom.protein;
-        staminaAmount += pfruit * attrs.staminaAmountFrom.fruit;
-        staminaAmount += pgrain * attrs.staminaAmountFrom.grain;
-        staminaAmount += pdairy * attrs.staminaAmountFrom.dairy;
-        staminaAmount += pvegetable * attrs.staminaAmountFrom.vegetable;
+        var staminaAmount = attrs.staminaAmountFrom.Calculate(pprotein, pfruit, pgrain, pdairy, pvegetable);
         entity.Stats.Set(StaminaSystem.N.Amount, "nutrition", staminaAmount);
 
-        var staminaRegen = pprotein * attrs.staminaAmountFrom.protein;
-        staminaRegen += pfruit * attrs.staminaAmountFrom.fruit;
-        staminaRegen += pgrain * attrs.staminaAmountFrom.grain;
-        staminaRegen += pdairy * attrs.staminaAmountFrom.dairy;
-        staminaRegen += pvegetable * attrs.staminaAmountFrom.vegetable;
+        var staminaRegen = attrs.staminaAmountFrom.Calculate(pprotein, pfruit, pgrain, pdairy, pvegetable);
         entity.Stats.Set(StaminaSystem.N.Regen, "nutrition", staminaRegen);
+
+        var exertionCost = attrs.exertionStaminaCostFrom.Calculate(pprotein, pfruit, pgrain, pdairy, pvegetable);
+        entity.Stats.Set(StaminaSystem.N.JumpDrain, "nutrition", exertionCost);
+        entity.Stats.Set(StaminaSystem.N.SprintDrain, "nutrition", exertionCost);
+
+        var healthBonus = attrs.healthBonusFrom.Calculate(pprotein, pfruit, pgrain, pdairy, pvegetable) * attrs.healthBonusAmount;
+        EntityBehaviorHealth hb = entity.GetBehavior<EntityBehaviorHealth>();
+        hb.SetMaxHealthModifiers("nutrition", healthBonus);
     }
 }

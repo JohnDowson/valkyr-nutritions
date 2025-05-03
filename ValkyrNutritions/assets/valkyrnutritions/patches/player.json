@@ -1,14 +1,29 @@
 [
   {
+    "op": "replace",
+    "path": "/server/behaviors/5",
+    "value": {
+        "code": "Valkyr:HungerSystem",
+        "props": {
+            "maxSaturation": 2500,
+            "hungerRateBase": 0.5,
+        }
+    },
+    "file": "game:entities/humanoid/player.json",
+    "side": "Server"
+  },
+  {
     "op": "addmerge",
     "path": "/server/behaviors",
     "value": [
       {
         "code": "Valkyr:StaminaSystem",
         "props": {
-            "amountMaxBase": 20.0,
+            "amountMaxBase": 30.0,
             "recoveryRateBase": 0.5,
-            "recoveryRateSitting": 1.0
+            "recoveryRateSittingMult": 2.0,
+            "sprintDrainBase": 1.0,
+            "jumpDrainBase": 4.0,
         }
       },
       {
@@ -22,12 +37,27 @@
                 "vegetable": 10.0,
             },
             "staminaRecoveryRateFrom": {
-                "protein": -5.0,
-                "fruit": 15.0,
-                "grain": 30.0,
-                "dairy": 10.0,
-                "vegetable": 20.0,
-            }
+                "protein": 0.5,
+                "fruit": 1.5,
+                "grain": 2.0,
+                "dairy": 1.0,
+                "vegetable": 2.5,
+            },
+            "exertionStaminaCostFrom": {
+                "protein": -0.20,
+                "fruit": -0.15,
+                "grain": -0.05,
+                "dairy": -0.30,
+                "vegetable": -0.20,
+            },
+            "healthBonusFrom": {
+                "protein": 0.20,
+                "fruit": 0.15,
+                "grain": 0.10,
+                "dairy": 0.25,
+                "vegetable": 0.20,
+            },
+            "healthBonusAmount": 30,
         }
       }
     ],

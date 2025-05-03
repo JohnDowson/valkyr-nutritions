@@ -18,59 +18,65 @@ public class StaminaSystem : EntityBehavior
     {
         public float amountMaxBase;
         public float recoveryRateBase;
-        public float recoveryRateSitting;
+        public float recoveryRateSittingMult;
+        public float sprintDrainBase;
+        public float jumpDrainBase;
     }
 
-    internal readonly struct N {
+    internal readonly struct N
+    {
         internal static readonly string Attr = "stamina";
         internal static readonly string Current = "current";
 
         internal static readonly string Amount = "staminaAmount";
         internal static readonly string Regen = "staminaRegen";
         internal static readonly string Exausted = "exausted";
+        internal static readonly string SprintDrain = "sprintDrain";
+        internal static readonly string JumpDrain = "jumpDrain";
     };
 
     private ILogger logger;
 
     internal StaminaAttrs attrs;
-    private bool exausted = false;
+    private EntityAgent agent;
     private bool groundedThisTick;
     private long spentStamina;
-    private EntityPlayer player;
     private ITreeAttribute staminaTree;
 
     #region Properties
 
-    internal float Current {
-        get {
+    internal float Current
+    {
+        get
+        {
             return staminaTree.GetFloat(N.Current);
         }
-        set {
+        set
+        {
             staminaTree.SetFloat(N.Current,
-                GameMath.Clamp(value, 0f, player.Stats.GetBlended(N.Amount)));
-            player.WatchedAttributes.MarkPathDirty(N.Attr);
+                GameMath.Clamp(value, 0f, agent.Stats.GetBlended(N.Amount)));
+            agent.WatchedAttributes.MarkPathDirty(N.Attr);
         }
     }
 
     public bool Exausted
     {
-        get { return exausted; }
+        get { return staminaTree.GetBool("exausted", false); }
         set
         {
             if (value)
             {
-                player.Stats.Set("walkspeed", "lowstamina", -0.3f, true);
-                player.Stats.Set("jumpHeightMul", "lowstamina", 0f, true);
-                player.Stats.Set("hungerrate", "lowstamina", 1f, true);
+                agent.Stats.Set("walkspeed", "lowstamina", -0.3f, true);
+                agent.Stats.Set("jumpHeightMul", "lowstamina", 0f, true);
+                agent.Stats.Set("hungerrate", "lowstamina", 1f, true);
             }
             else
             {
-                player.Stats.Set("walkspeed", "lowstamina", 0f, true);
-                player.Stats.Set("jumpHeightMul", "lowstamina", 0.33f, true);
-                player.Stats.Set("hungerrate", "lowstamina", 0f, true);
+                agent.Stats.Set("walkspeed", "lowstamina", 0f, true);
+                agent.Stats.Set("jumpHeightMul", "lowstamina", 0.33f, true);
+                agent.Stats.Set("hungerrate", "lowstamina", 0f, true);
             }
-            exausted = value;
-            staminaTree.SetBool("exausted", value);
+            staminaTree.SetBool(N.Exausted, value);
             entity.WatchedAttributes.MarkPathDirty(N.Attr);
         }
     }
@@ -79,7 +85,7 @@ public class StaminaSystem : EntityBehavior
 
     public StaminaSystem(Entity entity) : base(entity)
     {
-        player = (EntityPlayer)entity;
+        agent = (EntityAgent)entity;
         staminaTree = this.entity.WatchedAttributes.GetTreeAttribute(N.Attr);
     }
 
@@ -87,8 +93,11 @@ public class StaminaSystem : EntityBehavior
     {
         attrs = attributes["props"].AsObject<StaminaAttrs>();
 
-        player.Stats.Set(N.Regen, "base", attrs.recoveryRateBase, true);
-        player.Stats.Set(N.Amount, "base", attrs.amountMaxBase, true);
+        agent.Stats.Set(N.Regen, "base", attrs.recoveryRateBase, true);
+        agent.Stats.Set(N.Amount, "base", attrs.amountMaxBase, true);
+
+        agent.Stats.Set(N.SprintDrain, "base", attrs.sprintDrainBase, true);
+        agent.Stats.Set(N.JumpDrain, "base", attrs.jumpDrainBase, true);
 
         if (staminaTree == null)
         {
@@ -96,36 +105,35 @@ public class StaminaSystem : EntityBehavior
 
             Current = attrs.amountMaxBase;
         }
-
-        exausted = staminaTree.GetBool("exausted");
     }
 
     public override void OnGameTick(float dt)
     {
-        if (staminaTree == null)
+        if (staminaTree == null || agent == null)
         {
             return;
         }
 
         if (groundedThisTick = Grounded(dt))
         {
-            if (player.ServerControls.Sprint && player.ServerControls.TriesToMove)
+            if (agent.ServerControls.Sprint && agent.ServerControls.TriesToMove)
             {
-                SpendStamina(2f * dt);
+                SpendStamina(agent.Stats.GetBlended(N.SprintDrain) * dt);
             }
-            if (player.ServerControls.Jump && entity.World.ElapsedMilliseconds - lastJump > 500L && entity.Alive)
+            if (agent.ServerControls.Jump && entity.World.ElapsedMilliseconds - lastJump > 500L && entity.Alive)
             {
-                lastJump = player.World.ElapsedMilliseconds;
-                SpendStamina(150f * dt);
+                lastJump = agent.World.ElapsedMilliseconds;
+                SpendStamina(agent.Stats.GetBlended(N.JumpDrain));
             }
         }
 
-        if (!exausted && Current <= 0.01f)
+        if (!Exausted && Current <= 0.01f)
         {
             Exausted = true;
         }
 
-        Recover(dt);
+        if (Current < agent.Stats.GetBlended(N.Amount))
+            Recover(dt);
     }
 
     public bool TrySpendStamina(float use)
@@ -142,12 +150,19 @@ public class StaminaSystem : EntityBehavior
     private void SpendStamina(float use)
     {
         Current -= use;
-        spentStamina = player.World.ElapsedMilliseconds;
+        spentStamina = agent.World.ElapsedMilliseconds;
     }
 
     private void Recover(float dt)
     {
-        var elapsed = player.World.ElapsedMilliseconds - spentStamina;
+        var starving = entity.WatchedAttributes.GetTreeAttribute("hunger")?.GetBool("starvation", false) ?? false;
+        if (starving)
+        {
+            spentStamina = agent.World.ElapsedMilliseconds;
+            return;
+        }
+
+        var elapsed = agent.World.ElapsedMilliseconds - spentStamina;
         if (elapsed > 1000L)
         {
             const float SecondsToMaxRecSpd = 10f;
@@ -160,10 +175,14 @@ public class StaminaSystem : EntityBehavior
 
             var idleBonus = GameMath.Lerp(0f, MaxIdleRecBonus, elapsedF);
 
-            var rate = player.Stats.GetBlended(N.Regen);
-            rate += groundedThisTick && player.Controls.FloorSitting ?
-                    attrs.recoveryRateSitting : 0f;
+            var rate = agent.Stats.GetBlended(N.Regen);
             rate *= idleBonus;
+
+            var hs = entity.GetBehavior<HungerSystem>();
+            hs?.ReduceSaturation((rate * dt) * 2f);
+
+            if (groundedThisTick && agent.Controls.FloorSitting)
+                rate *= attrs.recoveryRateSittingMult;
 
             Current += rate * dt;
         }

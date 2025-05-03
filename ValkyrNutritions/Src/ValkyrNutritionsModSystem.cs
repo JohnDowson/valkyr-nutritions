@@ -4,10 +4,7 @@ using ValkyrNutritions.Behaviors;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
-using Vintagestory.API.Config;
-using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
-using Vintagestory.API.Util;
 using Vintagestory.GameContent;
 
 namespace ValkyrNutritions;
@@ -53,6 +50,7 @@ public class ValkyrNutritionsModSystem : ModSystem
         Register(typeof(StaminaSystem));
         Register(typeof(ToolUseNotifier));
         Register(typeof(NutritionBonus));
+        Register(typeof(HungerSystem));
     }
 
     public override void StartServerSide(ICoreServerAPI api)
@@ -61,7 +59,7 @@ public class ValkyrNutritionsModSystem : ModSystem
 
     public override void StartClientSide(ICoreClientAPI api)
     {        
-        this.valkyrHud = new ValkyrHud(api);
+        valkyrHud = new ValkyrHud(api);
     }
 
     #region Patches
