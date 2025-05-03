@@ -1,0 +1,37 @@
+[
+  {
+    "op": "addmerge",
+    "path": "/server/behaviors",
+    "value": [
+      {
+        "code": "Valkyr:StaminaSystem",
+        "props": {
+            "amountMaxBase": 20.0,
+            "recoveryRateBase": 0.5,
+            "recoveryRateSitting": 1.0
+        }
+      },
+      {
+        "code": "Valkyr:NutritionBonus",
+        "props": {
+            "staminaAmountFrom": {
+                "protein": 40.0,
+                "fruit": 10.0,
+                "grain": 10.0,
+                "dairy": 30.0,
+                "vegetable": 10.0,
+            },
+            "staminaRecoveryRateFrom": {
+                "protein": -5.0,
+                "fruit": 15.0,
+                "grain": 30.0,
+                "dairy": 10.0,
+                "vegetable": 20.0,
+            }
+        }
+      }
+    ],
+    "file": "game:entities/humanoid/player.json",
+    "side": "Server"
+  }
+]
