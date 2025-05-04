@@ -6,7 +6,7 @@
         "HJVT"
     ],
     "description": "Stamina and nutrition system inspired by Valheim",
-    "version": "1.0.0",
+    "version": "2.1.0",
     "dependencies": {
         "game": "1.20.7"
     }

@@ -10,32 +10,13 @@ namespace ValkyrNutritions.Behaviors;
 
 public class NutritionBonus : EntityBehavior
 {
-    public struct Nutrients
-    {
-        public float protein;
-        public float fruit;
-        public float grain;
-        public float dairy;
-        public float vegetable;
-
-        public float Calculate(float pprotein, float pfruit, float pgrain, float pdairy, float pvegetable)
-        {
-            var effect = pprotein * protein;
-            effect += pfruit * fruit;
-            effect += pgrain * grain;
-            effect += pdairy * dairy;
-            effect += pvegetable * vegetable;
-            return effect;
-        }
-    }
-
     public struct NutritionAttrs
     {
-        public Nutrients staminaAmountFrom;
-        public Nutrients staminaRecoveryRateFrom;
-        public Nutrients exertionStaminaCostFrom;
-        public Nutrients healthBonusFrom;
-        public float healthBonusAmount;
+        public float healthMaxBonus;
+        public float healthRegenMaxBonus;
+        public float staminaMaxBonus;
+        public float staminaRegenMaxBonus;
+        public float moveSpeedMaxBonus;
     }
 
 
@@ -57,7 +38,6 @@ public class NutritionBonus : EntityBehavior
     public override void AfterInitialized(bool onFirstSpawn)
     {
         hungerTree = entity.WatchedAttributes.GetTreeAttribute("hunger");
-
         ticker = entity.World.RegisterGameTickListener(new Action<float>(SlowTick), 5000, 0);
     }
 
@@ -72,6 +52,9 @@ public class NutritionBonus : EntityBehavior
         base.OnEntityReceiveDamage(damageSource, ref damage);
     }
 
+    #region Properties
+    #endregion Properties
+
     public void SlowTick(float deltaTime)
     {
         if (hungerTree == null) return;
@@ -85,18 +68,25 @@ public class NutritionBonus : EntityBehavior
         var pdairy = hungerTree.GetFloat("dairyLevel") / maxSat;
         var pvegetable = hungerTree.GetFloat("vegetableLevel") / maxSat;
 
-        var staminaAmount = attrs.staminaAmountFrom.Calculate(pprotein, pfruit, pgrain, pdairy, pvegetable);
+        var eproitein = pprotein + pdairy;
+        var ecarb = pgrain + pfruit;
+        var evitamin = pvegetable + pfruit;
+
+        var staminaAmount = attrs.staminaMaxBonus * eproitein;
         entity.Stats.Set(StaminaSystem.N.Amount, "nutrition", staminaAmount);
 
-        var staminaRegen = attrs.staminaAmountFrom.Calculate(pprotein, pfruit, pgrain, pdairy, pvegetable);
+        var staminaRegen = attrs.staminaRegenMaxBonus * ecarb;
         entity.Stats.Set(StaminaSystem.N.Regen, "nutrition", staminaRegen);
 
-        var exertionCost = attrs.exertionStaminaCostFrom.Calculate(pprotein, pfruit, pgrain, pdairy, pvegetable);
-        entity.Stats.Set(StaminaSystem.N.JumpDrain, "nutrition", exertionCost);
-        entity.Stats.Set(StaminaSystem.N.SprintDrain, "nutrition", exertionCost);
+        var moveSpeed = attrs.moveSpeedMaxBonus * eproitein;
+        entity.Stats.Set("walkspeed", "nutritrition", moveSpeed, true);
 
-        var healthBonus = attrs.healthBonusFrom.Calculate(pprotein, pfruit, pgrain, pdairy, pvegetable) * attrs.healthBonusAmount;
+        //var exertionCost = attrs.__ * eproitein;
+        //entity.Stats.Set(StaminaSystem.N.JumpDrain, "nutrition", exertionCost);
+        //entity.Stats.Set(StaminaSystem.N.SprintDrain, "nutrition", exertionCost);
+
         EntityBehaviorHealth hb = entity.GetBehavior<EntityBehaviorHealth>();
+        var healthBonus = attrs.healthMaxBonus * evitamin;
         hb.SetMaxHealthModifiers("nutrition", healthBonus);
     }
 }

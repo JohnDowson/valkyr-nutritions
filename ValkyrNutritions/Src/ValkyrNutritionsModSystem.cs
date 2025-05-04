@@ -4,6 +4,9 @@ using ValkyrNutritions.Behaviors;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
+using Vintagestory.API.Config;
+using Vintagestory.API.Datastructures;
+using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.GameContent;
 
@@ -14,6 +17,7 @@ public class ValkyrNutritionsModSystem : ModSystem
 {
     internal ValkyrHud valkyrHud;
     internal ICoreAPI api;
+    internal ICoreServerAPI sapi;
     internal Harmony harmony;
 
     static internal Dictionary<string, string> Registry = new();
@@ -55,11 +59,38 @@ public class ValkyrNutritionsModSystem : ModSystem
 
     public override void StartServerSide(ICoreServerAPI api)
     {
+        sapi = api;
+        api.ChatCommands.Create("valkyrreset")
+            .RequiresPrivilege("worldedit")
+            .WithDescription("Reset health and nutrition attributes")
+            .HandleWith(ResetTrees);
     }
 
     public override void StartClientSide(ICoreClientAPI api)
     {        
         valkyrHud = new ValkyrHud(api);
+    }
+
+    public TextCommandResult ResetTrees(TextCommandCallingArgs args)
+    {
+        foreach (var player in api.World.AllPlayers)
+        {
+            foreach (var bhj in player.Entity.SidedProperties.BehaviorsAsJsonObj)
+            {
+                var ent = player.Entity;
+                var code = bhj["code"]?.AsString(null);
+                if (code == "health")
+                {
+
+                    ent.WatchedAttributes.RemoveAttribute("health");
+                    var hb = ent.GetBehavior<EntityBehaviorHealth>();
+                    hb.Initialize(ent.Properties, bhj);
+                }
+
+            }
+        }
+
+        return TextCommandResult.Success();
     }
 
     #region Patches
@@ -84,7 +115,6 @@ public class ValkyrNutritionsModSystem : ModSystem
         }
         return !preventDefault;
     }
-
 
     [HarmonyPrefix]
     [HarmonyPatch(typeof(ItemBow), nameof(ItemBow.OnHeldInteractCancel))]

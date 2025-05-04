@@ -6,8 +6,19 @@
         "code": "Valkyr:HungerSystem",
         "props": {
             "maxSaturation": 2500,
-            "hungerRateBase": 0.5,
+            "hungerRateBase": 0.7,
         }
+    },
+    "file": "game:entities/humanoid/player.json",
+    "side": "Server"
+  },
+  {
+    "op": "replace",
+    "path": "/server/behaviors/4",
+    "value": {
+        "code": "health",
+        "maxhealth": 5,
+        "currenthealth": 5,
     },
     "file": "game:entities/humanoid/player.json",
     "side": "Server"
@@ -20,7 +31,7 @@
         "code": "Valkyr:StaminaSystem",
         "props": {
             "amountMaxBase": 30.0,
-            "recoveryRateBase": 0.5,
+            "recoveryRateBase": 1.0,
             "recoveryRateSittingMult": 2.0,
             "sprintDrainBase": 1.0,
             "jumpDrainBase": 4.0,
@@ -29,35 +40,11 @@
       {
         "code": "Valkyr:NutritionBonus",
         "props": {
-            "staminaAmountFrom": {
-                "protein": 40.0,
-                "fruit": 10.0,
-                "grain": 10.0,
-                "dairy": 30.0,
-                "vegetable": 10.0,
-            },
-            "staminaRecoveryRateFrom": {
-                "protein": 0.5,
-                "fruit": 1.5,
-                "grain": 2.0,
-                "dairy": 1.0,
-                "vegetable": 2.5,
-            },
-            "exertionStaminaCostFrom": {
-                "protein": -0.20,
-                "fruit": -0.15,
-                "grain": -0.05,
-                "dairy": -0.30,
-                "vegetable": -0.20,
-            },
-            "healthBonusFrom": {
-                "protein": 0.20,
-                "fruit": 0.15,
-                "grain": 0.10,
-                "dairy": 0.25,
-                "vegetable": 0.20,
-            },
-            "healthBonusAmount": 30,
+            "healthMaxBonus": 45.0,
+            "healthRegenMaxBonus": 2.0,
+            "staminaMaxBonus": 50.0,
+            "staminaRegenMaxBonus": 4.0,
+            "moveSpeedMaxBonus": 0.33,
         }
       }
     ],

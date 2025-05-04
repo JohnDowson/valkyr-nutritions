@@ -114,6 +114,8 @@ public class StaminaSystem : EntityBehavior
             return;
         }
 
+        Current = Math.Min(Current, agent.Stats.GetBlended(N.Amount));
+
         if (groundedThisTick = Grounded(dt))
         {
             if (agent.ServerControls.Sprint && agent.ServerControls.TriesToMove)
@@ -155,13 +157,6 @@ public class StaminaSystem : EntityBehavior
 
     private void Recover(float dt)
     {
-        var starving = entity.WatchedAttributes.GetTreeAttribute("hunger")?.GetBool("starvation", false) ?? false;
-        if (starving)
-        {
-            spentStamina = agent.World.ElapsedMilliseconds;
-            return;
-        }
-
         var elapsed = agent.World.ElapsedMilliseconds - spentStamina;
         if (elapsed > 1000L)
         {
